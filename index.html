@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe with Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --secondary-dark: #db2777;
+            --accent: #8b5cf6;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+        }
+        
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 280px;
+            height: 210px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .camera-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .camera-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--primary);
+            border-radius: 16px;
+            overflow: hidden;
+            z-index: 10;
+        }
+        
+        .camera-feed video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            z-index: 11;
+            pointer-events: none;
+        }
+        
+        .camera-overlay img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-guide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px dashed var(--warning);
+            border-radius: 16px;
+            z-index: 9;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .camera-guide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' width='300' height='300' fill='none' stroke='%23f59e0b' stroke-width='0.2'%3E%3Cpath d='M0,3 H9 M0,6 H9 M3,0 V9 M6,0 V9'/%3E%3C/svg%3E") center/contain no-repeat;
+            opacity: 0.5;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 110px);
+            grid-template-rows: repeat(3, 110px);
+            gap: 8px;
+            margin: 0 auto;
+        }
+        
+        .game-cell {
+            width: 110px;
+            height: 110px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 700;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        
+        .game-cell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: var(--primary);
+        }
+        
+        .game-cell.text-blue-600 {
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+        
+        .game-cell.text-red-600 {
+            color: var(--secondary);
+            text-shadow: 0 2px 4px rgba(236, 72, 153, 0.2);
+        }
+        
+        .game-cell.bg-green-200 {
+            background: #dcfce7;
+            border-color: var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+        
+        .cell-correction {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 2px;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .game-cell:hover .cell-correction {
+            opacity: 1;
+        }
+        
+        .correction-btn {
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .correction-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .confidence-indicator {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 10px;
+            color: #64748b;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--secondary-dark);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #0d9668;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--dark);
+            color: var(--dark);
+        }
+        
+        .btn-outline:hover {
+            background: var(--dark);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .capture-feedback {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            z-index: 100;
+            font-weight: 500;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .edit-mode-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(to right, var(--warning), var(--secondary));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            z-index: 50;
+            display: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            animation: slideDown 0.5s ease;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        .debug-view {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            z-index: 100;
+            max-width: 320px;
+            max-height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .debug-image {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        
+        .cell-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .cell-image {
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        
+        .cell-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tips-card {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 4px solid var(--warning);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .tips-card ul {
+            margin-top: 0.5rem;
+        }
+        
+        .tips-card li {
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .tips-card li::before {
+            content: '•';
+            color: var(--warning);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: 0.5em;
+        }
+        
+        .player-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-right: 1rem;
+        }
+        
+        .player-x {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        
+        .player-o {
+            background: rgba(236, 72, 153, 0.1);
+            color: var(--secondary);
+        }
+        
+        .status-display {
+            font-weight: 600;
+            font-size: 1.25rem;
+            color: var(--dark);
+            transition: all 0.3s ease;
+        }
+        
+        .game-title {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 1rem;
+            }
+            
+            .game-board {
+                grid-template-columns: repeat(3, 90px);
+                grid-template-rows: repeat(3, 90px);
+                gap: 6px;
+            }
+            
+            .game-cell {
+                width: 90px;
+                height: 90px;
+                font-size: 2.5rem;
+            }
+            
+            .camera-container {
+                width: 240px;
+                height: 180px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .game-board {
+                grid-template-columns: repeat(3, 80px);
+                grid-template-rows: repeat(3, 80px);
+                gap: 4px;
+            }
+            
+            .game-cell {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+            
+            .camera-container {
+                width: 200px;
+                height: 150px;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="editModeIndicator" class="edit-mode-indicator">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+        </svg>
+        Edit Mode: Click cells to correct detection errors
+    </div>
+    
+    <div id="captureFeedback" class="capture-feedback">
+        <div class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing board...
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="flex flex-col items-center">
+                <div class="camera-container mb-4">
+                    <div class="camera-feed">
+                        <video id="camera" autoplay playsinline></video>
+                    </div>
+                    
+                    <div class="camera-overlay">
+                        <img id="cameraOverlay" style="width: 100%; height: 100%; opacity: 0.7; display: none;">
+                    </div>
+                    
+                    <div id="cameraGuide" class="camera-guide"></div>
+                </div>
+                
+                <div class="flex gap-2 mb-4">
+                    <button id="showGuideBtn" class="btn btn-sm btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Alignment Guide
+                    </button>
+                    <button id="toggleDebugBtn" class="btn btn-sm btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" />
+                        </svg>
+                        Debug View
+                    </button>
+                </div>
+                
+                <div class="tips-card w-full">
+                    <div class="font-semibold text-amber-800 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        Tips for better detection:
+                    </div>
+                    <ul class="list-none pl-2 mt-1 text-sm text-amber-800">
+                        <li>Use dark pen/marker for better contrast</li>
+                        <li>Ensure good lighting</li>
+                        <li>Hold the paper steady and flat</li>
+                        <li>Align the board with the guide</li>
+                        <li>Leave empty cells clearly empty</li>
+                        <li>Use Edit mode to correct any errors</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card p-8 flex-1">
+                <h1 class="game-title text-4xl text-center mb-6">Tic-Tac-Toe</h1>
+                
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex">
+                        <div class="player-indicator player-x">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                            You: X
+                        </div>
+                        <div class="player-indicator player-o">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                            Computer: O
+                        </div>
+                    </div>
+                    <button id="resetBtn" class="btn btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        Reset Game
+                    </button>
+                </div>
+                
+                <div class="game-board mx-auto mb-8">
+                    <div class="game-cell" data-index="0">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="1">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="2">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="3">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="4">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="5">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="6">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="7">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                    <div class="game-cell" data-index="8">
+                        <div class="cell-correction">
+                            <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                            <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                            <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                        </div>
+                        <div class="confidence-indicator"></div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <div id="status" class="status-display">Your turn</div>
+                        <div class="flex gap-2">
+                            <button id="editBtn" class="btn btn-warning">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                                Edit Board
+                            </button>
+                            <button id="captureBtn" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                </svg>
+                                Capture Board
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="debugView" class="debug-view">
+        <h3 class="text-lg font-semibold mb-2 text-gray-800">Debug View</h3>
+        <img id="debugImage" class="debug-image">
+        <div id="debugText" class="text-sm mt-2 p-2 bg-gray-50 rounded-md"></div>
+        <h4 class="text-md font-semibold mt-4 mb-2 text-gray-800">Cell Analysis</h4>
+        <div id="cellGrid" class="cell-grid"></div>
+    </div>
+    
+    <script>
+        // Game state
+        let gameBoard = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let debugMode = false;
+        let editMode = false;
+        let cellConfidences = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        
+        // DOM elements
+        const cells = document.querySelectorAll('.game-cell');
+        const confidenceIndicators = document.querySelectorAll('.confidence-indicator');
+        const correctionButtons = document.querySelectorAll('.correction-btn');
+        const statusDisplay = document.getElementById('status');
+        const resetButton = document.getElementById('resetBtn');
+        const captureButton = document.getElementById('captureBtn');
+        const editButton = document.getElementById('editBtn');
+        const showGuideButton = document.getElementById('showGuideBtn');
+        const toggleDebugButton = document.getElementById('toggleDebugBtn');
+        const editModeIndicator = document.getElementById('editModeIndicator');
+        const video = document.getElementById('camera');
+        const cameraOverlay = document.getElementById('cameraOverlay');
+        const captureFeedback = document.getElementById('captureFeedback');
+        const cameraGuide = document.getElementById('cameraGuide');
+        const debugView = document.getElementById('debugView');
+        const debugImage = document.getElementById('debugImage');
+        const debugText = document.getElementById('debugText');
+        const cellGrid = document.getElementById('cellGrid');
+        
+        // Initialize camera
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 640, 
+                        height: 480,
+                        facingMode: 'environment' // Prefer back camera if available
+                    } 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Could not access camera. Please check permissions.');
+            }
+        }
+        
+        // Initialize game
+        function initGame() {
+            // Set up cell click handlers
+            cells.forEach(cell => {
+                cell.addEventListener('click', () => {
+                    if (editMode) {
+                        // In edit mode, clicking the cell shows correction buttons
+                        // (buttons are already visible on hover)
+                    } else {
+                        // In play mode, clicking makes a move
+                        handleCellClick(cell);
+                    }
+                });
+            });
+            
+            // Set up correction button handlers
+            correctionButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering cell click
+                    const cell = button.closest('.game-cell');
+                    const index = parseInt(cell.getAttribute('data-index'));
+                    const value = button.getAttribute('data-value');
+                    
+                    // Update the cell with the corrected value
+                    if (gameBoard[index] !== value) {
+                        gameBoard[index] = value;
+                        updateCellDisplay(cell, value);
+                        
+                        // Update game state after correction
+                        checkGameResult();
+                        
+                        // If it's computer's turn after correction, make a move
+                        if (gameActive && currentPlayer === 'O') {
+                            setTimeout(computerMove, 500);
+                        }
+                    }
+                });
+            });
+            
+            // Set up other button handlers
+            resetButton.addEventListener('click', resetGame);
+            captureButton.addEventListener('click', captureAndProcessBoard);
+            editButton.addEventListener('click', toggleEditMode);
+            showGuideButton.addEventListener('click', toggleCameraGuide);
+            toggleDebugButton.addEventListener('click', toggleDebugView);
+            
+            initCamera();
+        }
+        
+        // Toggle edit mode
+        function toggleEditMode() {
+            editMode = !editMode;
+            
+            if (editMode) {
+                // Enter edit mode
+                editButton.textContent = "Done Editing";
+                editButton.classList.remove('btn-warning');
+                editButton.classList.add('btn-success');
+                editModeIndicator.style.display = 'block';
+                
+                // Show all confidence indicators
+                confidenceIndicators.forEach(indicator => {
+                    indicator.style.opacity = '1';
+                });
+            } else {
+                // Exit edit mode
+                editButton.textContent = "Edit Board";
+                editButton.classList.remove('btn-success');
+                editButton.classList.add('btn-warning');
+                editModeIndicator.style.display = 'none';
+                
+                // Hide confidence indicators
+                confidenceIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Check game state after editing
+                checkGameResult();
+                
+                // If it's computer's turn after editing, make a move
+                if (gameActive && currentPlayer === 'O') {
+                    setTimeout(computerMove, 500);
+                }
+            }
+        }
+        
+        // Update cell display
+        function updateCellDisplay(cell, value) {
+            // Clear existing classes
+            cell.classList.remove('text-blue-600', 'text-red-600');
+            
+            // Update cell content and style
+            cell.textContent = value;
+            
+            // Re-add the correction buttons (they were removed when setting textContent)
+            const correctionDiv = cell.querySelector('.cell-correction');
+            if (!correctionDiv) {
+                const newCorrectionDiv = document.createElement('div');
+                newCorrectionDiv.className = 'cell-correction';
+                newCorrectionDiv.innerHTML = `
+                    <button class="correction-btn bg-blue-100 text-blue-600 hover:bg-blue-200" data-value="X">X</button>
+                    <button class="correction-btn bg-pink-100 text-pink-600 hover:bg-pink-200" data-value="O">O</button>
+                    <button class="correction-btn bg-gray-100 text-gray-600 hover:bg-gray-200" data-value="">-</button>
+                `;
+                cell.appendChild(newCorrectionDiv);
+                
+                // Add event listeners to new buttons
+                newCorrectionDiv.querySelectorAll('.correction-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const cellElement = button.closest('.game-cell');
+                        const cellIndex = parseInt(cellElement.getAttribute('data-index'));
+                        const cellValue = button.getAttribute('data-value');
+                        
+                        if (gameBoard[cellIndex] !== cellValue) {
+                            gameBoard[cellIndex] = cellValue;
+                            updateCellDisplay(cellElement, cellValue);
+                            
+                            checkGameResult();
+                            if (gameActive && currentPlayer === 'O') {
+                                setTimeout(computerMove, 500);
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Re-add the confidence indicator
+            const confidenceDiv = cell.querySelector('.confidence-indicator');
+            if (!confidenceDiv) {
+                const newConfidenceDiv = document.createElement('div');
+                newConfidenceDiv.className = 'confidence-indicator';
+                cell.appendChild(newConfidenceDiv);
+            }
+            
+            // Apply appropriate text color
+            if (value === 'X') {
+                cell.classList.add('text-blue-600');
+            } else if (value === 'O') {
+                cell.classList.add('text-red-600');
+            }
+        }
+        
+        // Toggle camera guide
+        function toggleCameraGuide() {
+            if (cameraGuide.style.display === 'block') {
+                cameraGuide.style.display = 'none';
+                showGuideButton.textContent = 'Alignment Guide';
+            } else {
+                cameraGuide.style.display = 'block';
+                showGuideButton.textContent = 'Hide Guide';
+            }
+        }
+        
+        // Toggle debug view
+        function toggleDebugView() {
+            debugMode = !debugMode;
+            debugView.style.display = debugMode ? 'block' : 'none';
+        }
+        
+        // Handle cell click
+        function handleCellClick(cell) {
+            if (editMode) return; // Ignore clicks in edit mode
+            
+            const index = cell.getAttribute('data-index');
+            
+            if (gameBoard[index] !== '' || !gameActive) return;
+            
+            updateCell(cell, index);
+            checkGameResult();
+            
+            if (gameActive) {
+                setTimeout(computerMove, 500);
+            }
+        }
+        
+        // Update cell
+        function updateCell(cell, index) {
+            gameBoard[index] = currentPlayer;
+            cell.textContent = currentPlayer;
+            cell.classList.add(currentPlayer === 'X' ? 'text-blue-600' : 'text-red-600');
+            
+            // Re-add the correction buttons and confidence indicator
+            updateCellDisplay(cell, currentPlayer);
+        }
+        
+        // Computer move
+        function computerMove() {
+            // Check if game is still active
+            if (!gameActive) return;
+            
+            // Find empty cells
+            const emptyIndices = gameBoard.map((cell, index) => cell === '' ? index : null).filter(val => val !== null);
+            
+            if (emptyIndices.length > 0) {
+                // Show thinking message
+                statusDisplay.textContent = "Computer is thinking...";
+                
+                // Delay to simulate thinking
+                setTimeout(() => {
+                    // Simple AI: Try to win, block opponent, or choose random cell
+                    let moveIndex = findBestMove(gameBoard);
+                    
+                    currentPlayer = 'O';
+                    updateCell(cells[moveIndex], moveIndex);
+                    
+                    // Update status and check result
+                    checkGameResult();
+                    
+                    // If game is still active, set back to player's turn
+                    if (gameActive) {
+                        currentPlayer = 'X';
+                        statusDisplay.textContent = "Your turn - make a move or capture board";
+                    }
+                }, 800);
+            }
+        }
+
+        // Add a smarter move finding function
+        function findBestMove(board) {
+            // Win patterns
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                [0, 4, 8], [2, 4, 6]             // diagonals
+            ];
+            
+            // Check if computer can win
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                // If two Os and an empty space, take the win
+                if (board[a] === 'O' && board[b] === 'O' && board[c] === '') return c;
+                if (board[a] === 'O' && board[c] === 'O' && board[b] === '') return b;
+                if (board[b] === 'O' && board[c] === 'O' && board[a] === '') return a;
+            }
+            
+            // Check if player can win and block
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                // If two Xs and an empty space, block
+                if (board[a] === 'X' && board[b] === 'X' && board[c] === '') return c;
+                if (board[a] === 'X' && board[c] === 'X' && board[b] === '') return b;
+                if (board[b] === 'X' && board[c] === 'X' && board[a] === '') return a;
+            }
+            
+            // Take center if available
+            if (board[4] === '') return 4;
+            
+            // Take corners if available
+            const corners = [0, 2, 6, 8].filter(i => board[i] === '');
+            if (corners.length > 0) {
+                return corners[Math.floor(Math.random() * corners.length)];
+            }
+            
+            // Take any available edge
+            const edges = [1, 3, 5, 7].filter(i => board[i] === '');
+            if (edges.length > 0) {
+                return edges[Math.floor(Math.random() * edges.length)];
+            }
+            
+            // Fallback: choose random empty cell
+            const emptyIndices = board.map((cell, index) => cell === '' ? index : null).filter(val => val !== null);
+            return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+        }
+        
+        // Check game result
+        function checkGameResult() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                [0, 4, 8], [2, 4, 6]             // diagonals
+            ];
+            
+            let gameWon = false;
+            
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (gameBoard[a] && gameBoard[a] === gameBoard[b] && gameBoard[a] === gameBoard[c]) {
+                    gameWon = true;
+                    gameActive = false;
+                    statusDisplay.textContent = `${gameBoard[a] === 'X' ? 'You' : 'Computer'} won!`;
+                    
+                    // Highlight winning cells
+                    cells[a].classList.add('bg-green-200');
+                    cells[b].classList.add('bg-green-200');
+                    cells[c].classList.add('bg-green-200');
+                    break;
+                }
+            }
+            
+            if (!gameWon && !gameBoard.includes('')) {
+                gameActive = false;
+                statusDisplay.textContent = "It's a draw!";
+            } else if (gameActive) {
+                statusDisplay.textContent = `${currentPlayer === 'X' ? 'Your' : 'Computer\'s'} turn`;
+            }
+        }
+        
+        // Reset game
+        function resetGame() {
+            gameBoard = ['', '', '', '', '', '', '', '', ''];
+            cellConfidences = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            gameActive = true;
+            currentPlayer = 'X';
+            statusDisplay.textContent = "Your turn";
+            
+            cells.forEach((cell, index) => {
+                cell.textContent = '';
+                cell.classList.remove('text-blue-600', 'text-red-600', 'bg-green-200');
+                
+                // Re-add the correction buttons and confidence indicator
+                updateCellDisplay(cell, '');
+                
+                // Reset confidence display
+                const confidenceIndicator = cell.querySelector('.confidence-indicator');
+                if (confidenceIndicator) {
+                    confidenceIndicator.textContent = '';
+                }
+            });
+            
+            // Exit edit mode if active
+            if (editMode) {
+                toggleEditMode();
+            }
+        }
+        
+        // Capture and process board
+        function captureAndProcessBoard() {
+            // Show processing feedback
+            captureFeedback.style.display = 'block';
+            
+            // Create a canvas to capture the current video frame
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // If in debug mode, show the captured image
+            if (debugMode) {
+                debugImage.src = canvas.toDataURL('image/jpeg');
+                debugText.textContent = 'Processing image...';
+                cellGrid.innerHTML = ''; // Clear previous cell visualizations
+            }
+            
+            // Convert canvas to data URL
+            const imageData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // Send to backend for processing
+            fetch('/process_board', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide processing feedback
+                captureFeedback.style.display = 'none';
+                
+                if (data.success) {
+                    // Show the visualization overlay on the camera feed
+                    cameraOverlay.src = data.visualization;
+                    cameraOverlay.style.display = 'block';
+                    
+                    // Store confidence values
+                    cellConfidences = data.confidences || [0, 0, 0, 0, 0, 0, 0, 0, 0];
+                    
+                    // Update game board with detected state
+                    updateGameFromDetection(data.board);
+                    
+                    // Update confidence indicators
+                    cells.forEach((cell, index) => {
+                        const confidenceIndicator = cell.querySelector('.confidence-indicator');
+                        if (confidenceIndicator) {
+                            const confidence = cellConfidences[index];
+                            confidenceIndicator.textContent = confidence ? confidence.toFixed(2) : '';
+                        }
+                    });
+                    
+                    if (debugMode) {
+                        // Update debug view with visualization and cell analysis
+                        debugImage.src = data.visualization;
+                        debugText.textContent = `Detected: ${data.board.map(c => c || '-').join(' ')}`;
+                        
+                        // Display individual cell visualizations
+                        cellGrid.innerHTML = '';
+                        if (data.cellVisualizations) {
+                            data.cellVisualizations.forEach((cellVis, index) => {
+                                const cellImg = document.createElement('img');
+                                cellImg.src = cellVis;
+                                cellImg.className = 'cell-image';
+                                cellImg.title = `Cell ${index}: ${data.board[index] || 'Empty'} (${data.confidences[index].toFixed(2)})`;
+                                cellGrid.appendChild(cellImg);
+                            });
+                        }
+                    }
+                } else {
+                    console.error('Error processing board:', data.error);
+                    alert('Could not detect game board. Please try again.');
+                    
+                    if (debugMode) {
+                        debugText.textContent = `Error: ${data.error}`;
+                    }
+                }
+            })
+            .catch(error => {
+                // Hide processing feedback
+                captureFeedback.style.display = 'none';
+                
+                console.error('Error sending image to server:', error);
+                alert('Error communicating with server.');
+                
+                if (debugMode) {
+                    debugText.textContent = `Error: ${error.message}`;
+                }
+            });
+        }
+        
+        // Update game from detection
+        function updateGameFromDetection(detectedBoard) {
+            // Reset current game
+            resetGame();
+            
+            // Apply detected moves
+            let xCount = 0;
+            let oCount = 0;
+            
+            detectedBoard.forEach((value, index) => {
+                if (value === 'X') {
+                    xCount++;
+                    gameBoard[index] = 'X';
+                    cells[index].textContent = 'X';
+                    cells[index].classList.add('text-blue-600');
+                    
+                    // Re-add the correction buttons and confidence indicator
+                    updateCellDisplay(cells[index], 'X');
+                } else if (value === 'O') {
+                    oCount++;
+                    gameBoard[index] = 'O';
+                    cells[index].textContent = 'O';
+                    cells[index].classList.add('text-red-600');
+                    
+                    // Re-add the correction buttons and confidence indicator
+                    updateCellDisplay(cells[index], 'O');
+                } else {
+                    // Re-add the correction buttons and confidence indicator for empty cells
+                    updateCellDisplay(cells[index], '');
+                }
+            });
+            
+            // Determine next player based on board state
+            if (xCount > oCount) {
+                currentPlayer = 'O';
+                statusDisplay.textContent = "Computer's turn";
+                // Automatically make the computer's move after a short delay
+                setTimeout(computerMove, 1000);
+            } else {
+                currentPlayer = 'X';
+                statusDisplay.textContent = "Your turn";
+            }
+            
+            // Check if game is already won
+            checkGameResult();
+        }
+        
+        // Initialize the game when page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
